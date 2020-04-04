@@ -1,0 +1,40 @@
+name: image deployment
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-go@v1
+        with:
+          go-version: 1.13
+        id: go
+
+      - uses: azure/docker-login@v1
+        with:
+          login-server: rg.fr-par.scw.cloud/fuelforcheap
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - run: echo "$CFG_TOML" > config/cfg.toml
+        shell: bash
+        env:
+          CFG_TOML: ${{ secrets.CFG_TOML }}
+
+      - name: build go
+        run: go build -o main
+        env:
+          GO111MODULE: 'on'
+          CGO_ENABLED: 0
+          GOOS: linux
+
+      - name: build the image
+        run: docker build . -t rg.fr-par.scw.cloud/fuelforcheap/scrapper:latest
+
+      - name: push the image
+        run: docker push rg.fr-par.scw.cloud/fuelforcheap/scrapper:latest
